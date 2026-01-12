@@ -156,6 +156,9 @@ Gracefully halt (power off) running virtual machines without destroying them:
    # Halt instances in a specific scenario
    molecule halt -s multi-node
 
+   # Halt a specific instance in a multi-node scenario
+   MOLECULE_HOST=instance-1 molecule halt -s multi-node
+
    # Force halt (equivalent to pulling the power plug)
    # Configure in molecule.yml:
    driver:
@@ -164,6 +167,11 @@ Gracefully halt (power off) running virtual machines without destroying them:
 
 The ``halt`` command is useful when you want to temporarily stop VMs to free up system
 resources without losing the VM state or needing to recreate them from scratch.
+
+**Multi-Node Support**: When working with multi-node scenarios (multiple VMs defined in
+``platforms``), you can target a specific instance by setting the ``MOLECULE_HOST``
+environment variable to the instance name. This allows you to halt individual VMs
+without affecting others in the scenario.
 
 start
 -----
@@ -178,6 +186,9 @@ Start previously halted virtual machines:
    # Start instances in a specific scenario
    molecule start -s multi-node
 
+   # Start a specific instance in a multi-node scenario
+   MOLECULE_HOST=instance-2 molecule start -s multi-node
+
    # Start with provisioning enabled
    # Configure in molecule.yml:
    driver:
@@ -187,6 +198,11 @@ Start previously halted virtual machines:
 The ``start`` command brings halted VMs back online, preserving their state from when
 they were halted. This is significantly faster than destroying and recreating VMs,
 making it ideal for development workflows where you need to pause and resume testing.
+
+**Multi-Node Support**: Like the ``halt`` command, ``start`` supports targeting specific
+instances in multi-node scenarios using the ``MOLECULE_HOST`` environment variable. This
+gives you fine-grained control over which VMs are running, useful for resource management
+or testing specific node interactions.
 
 
 .. _get-involved:

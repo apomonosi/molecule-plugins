@@ -57,6 +57,11 @@ options:
       - list of instances to handle
     required: False
     default: []
+  limit_to_instance:
+    description:
+      - Limit operations to a specific instance by name.
+    required: False
+    default: None
   instance_name:
     description:
       - Assign a name to a new instance or match an existing instance.
@@ -408,6 +413,16 @@ class VagrantClient:
         else:
             self.instances = self._module.params["instances"]
 
+        # Filter instances if limit_to_instance is specified
+        limit_to = self._module.params.get("limit_to_instance")
+        if limit_to:
+            filtered_instances = [i for i in self.instances if i["name"] == limit_to]
+            if not filtered_instances:
+                self._module.fail_json(
+                    msg=f"Instance '{limit_to}' not found in the list of instances",
+                )
+            self.instances = filtered_instances
+
         self._config = self._get_config()
         self._vagrantfile = self._config["vagrantfile"]
         self._vagrant = self._get_vagrant()
@@ -718,6 +733,7 @@ def main():
     module = AnsibleModule(
         argument_spec={
             "instances": {"type": "list", "required": False},
+            "limit_to_instance": {"type": "str", "required": False, "default": None},
             "instance_name": {"type": "str", "required": False, "default": None},
             "instance_interfaces": {"type": "list", "default": []},
             "instance_raw_config_args": {"type": "list", "default": None},

@@ -8,6 +8,7 @@
     - name: Start molecule instance(s) # noqa fqcn[action]
       vagrant:
         instances: "{{ molecule_yml.platforms }}"
+        limit_to_instance: "{{ lookup('env', 'MOLECULE_HOST') | default(omit, true) }}"
         default_box: "{{ molecule_yml.driver.default_box | default('generic/alpine316') }}"
         provider_name: "{{ molecule_yml.driver.provider.name | default(omit, true) }}"
         provision: "{{ molecule_yml.driver.provision | default(omit) }}"
