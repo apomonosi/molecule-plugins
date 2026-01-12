@@ -57,6 +57,11 @@ options:
       - list of instances to handle
     required: False
     default: []
+  limit_to_instance:
+    description:
+      - Limit operations to a specific instance by name.
+    required: False
+    default: None
   instance_name:
     description:
       - Assign a name to a new instance or match an existing instance.
@@ -141,7 +146,7 @@ options:
     description:
       - The desired state of the instance.
     required: True
-    choices: ['up', 'halt', 'destroy']
+    choices: ['up', 'start', 'halt', 'destroy']
     default: None
   workdir:
     description:
@@ -408,6 +413,16 @@ class VagrantClient:
         else:
             self.instances = self._module.params["instances"]
 
+        # Filter instances if limit_to_instance is specified
+        limit_to = self._module.params.get("limit_to_instance")
+        if limit_to:
+            filtered_instances = [i for i in self.instances if i["name"] == limit_to]
+            if not filtered_instances:
+                self._module.fail_json(
+                    msg=f"Instance '{limit_to}' not found in the list of instances",
+                )
+            self.instances = filtered_instances
+
         self._config = self._get_config()
         self._vagrantfile = self._config["vagrantfile"]
         self._vagrant = self._get_vagrant()
@@ -498,6 +513,25 @@ class VagrantClient:
             self._vagrant.halt(force=self._module.params["force_stop"])
 
         self._module.exit_json(changed=changed)
+
+    def start(self):
+        changed = False
+        halted_count = self._created() - self._running()
+        if halted_count > 0:
+            changed = True
+            provision = self.provision
+            with contextlib.suppress(Exception):
+                self._vagrant.up(provision=provision)
+
+        # NOTE(retr0h): Ansible wants only one module return `fail_json`
+        # or `exit_json`.
+        if not self._has_error:
+            self._module.exit_json(changed=changed, log=self._get_stdout_log())
+
+        msg = f"Failed to start the VM(s): See log file '{self._get_stderr_log()}'"
+        with open(self._get_stderr_log(), encoding="utf-8") as f:
+            self.result["stderr"] = f.read()
+        self._module.fail_json(msg=msg, **self.result)
 
     def _conf_instance(self, instance_name):
         try:
@@ -699,6 +733,7 @@ def main():
     module = AnsibleModule(
         argument_spec={
             "instances": {"type": "list", "required": False},
+            "limit_to_instance": {"type": "str", "required": False, "default": None},
             "instance_name": {"type": "str", "required": False, "default": None},
             "instance_interfaces": {"type": "list", "default": []},
             "instance_raw_config_args": {"type": "list", "default": None},
@@ -722,7 +757,7 @@ def main():
             "state": {
                 "type": "str",
                 "default": "up",
-                "choices": ["up", "destroy", "halt"],
+                "choices": ["up", "start", "halt", "destroy"],
             },
             "workdir": {"type": "str"},
             "parallel": {"type": "bool", "default": True},
@@ -743,6 +778,9 @@ def main():
 
     if module.params["state"] == "up":
         v.up()
+
+    if module.params["state"] == "start":
+        v.start()
 
     if module.params["state"] == "destroy":
         v.destroy()
