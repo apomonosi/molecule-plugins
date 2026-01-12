@@ -141,7 +141,7 @@ options:
     description:
       - The desired state of the instance.
     required: True
-    choices: ['up', 'halt', 'destroy']
+    choices: ['up', 'start', 'halt', 'destroy']
     default: None
   workdir:
     description:
@@ -499,6 +499,25 @@ class VagrantClient:
 
         self._module.exit_json(changed=changed)
 
+    def start(self):
+        changed = False
+        halted_count = self._created() - self._running()
+        if halted_count > 0:
+            changed = True
+            provision = self.provision
+            with contextlib.suppress(Exception):
+                self._vagrant.up(provision=provision)
+
+        # NOTE(retr0h): Ansible wants only one module return `fail_json`
+        # or `exit_json`.
+        if not self._has_error:
+            self._module.exit_json(changed=changed, log=self._get_stdout_log())
+
+        msg = f"Failed to start the VM(s): See log file '{self._get_stderr_log()}'"
+        with open(self._get_stderr_log(), encoding="utf-8") as f:
+            self.result["stderr"] = f.read()
+        self._module.fail_json(msg=msg, **self.result)
+
     def _conf_instance(self, instance_name):
         try:
             return self._vagrant.conf(vm_name=instance_name)
@@ -722,7 +741,7 @@ def main():
             "state": {
                 "type": "str",
                 "default": "up",
-                "choices": ["up", "destroy", "halt"],
+                "choices": ["up", "start", "halt", "destroy"],
             },
             "workdir": {"type": "str"},
             "parallel": {"type": "bool", "default": True},
@@ -743,6 +762,9 @@ def main():
 
     if module.params["state"] == "up":
         v.up()
+
+    if module.params["state"] == "start":
+        v.start()
 
     if module.params["state"] == "destroy":
         v.destroy()

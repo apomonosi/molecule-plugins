@@ -137,6 +137,57 @@ Here's a full example with the libvirt provider:
 More examples may be found in the ``molecule`` `scenarios directory`_.
 They're the scenarios used by the CI.
 
+VM Lifecycle Management Commands
+=================================
+
+In addition to the standard Molecule commands (``create``, ``converge``, ``destroy``),
+the Vagrant plugin provides additional commands for lightweight VM management:
+
+halt
+----
+
+Gracefully halt (power off) running virtual machines without destroying them:
+
+.. code-block:: bash
+
+   # Halt all instances in the default scenario
+   molecule halt
+
+   # Halt instances in a specific scenario
+   molecule halt -s multi-node
+
+   # Force halt (equivalent to pulling the power plug)
+   # Configure in molecule.yml:
+   driver:
+     name: vagrant
+     force_stop: true
+
+The ``halt`` command is useful when you want to temporarily stop VMs to free up system
+resources without losing the VM state or needing to recreate them from scratch.
+
+start
+-----
+
+Start previously halted virtual machines:
+
+.. code-block:: bash
+
+   # Start all halted instances in the default scenario
+   molecule start
+
+   # Start instances in a specific scenario
+   molecule start -s multi-node
+
+   # Start with provisioning enabled
+   # Configure in molecule.yml:
+   driver:
+     name: vagrant
+     provision: true
+
+The ``start`` command brings halted VMs back online, preserving their state from when
+they were halted. This is significantly faster than destroying and recreating VMs,
+making it ideal for development workflows where you need to pause and resume testing.
+
 
 .. _get-involved:
 
